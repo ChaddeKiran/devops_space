@@ -87,17 +87,15 @@ pipeline {
                     $class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'AWS_CRED'
                 ]]) {
-                    dir('backend') {
                     sh """
                         aws eks --region ${env.AWS_REGION} update-kubeconfig --name ${env.EKS_CLUSTER_NAME}
 
-                        kubectl apply -f prod/deployments/deployment-blue.yaml
+                        kubectl apply -f backend/prod/deployments/deployment-blue.yaml
 
                         kubectl set image deployment/bookmycar-backend \
                         backend=${DOCKER_IMAGE}:${DOCKER_TAG} \
                         --namespace=prod
                     """
-                }
                 }
             }
         }
