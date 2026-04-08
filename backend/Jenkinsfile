@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = 'chaddekiran/bookmycar_backend'
+        DOCKER_TAG = "v1.0.${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/ChaddeKiran/BookMyCar.git',
+                    credentialsId: 'GITHUB_CRED'
+            }
+        }
+
+        stage('Install') {
+            steps {
+                sh './mvnw clean install'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh '''
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                '''
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'DOCKER_CRED',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh '''
+                        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+                    '''
+                }
+            }
+        }
+        stage('Deployment to EKS') {
+    steps {
+        withCredentials([[
+            $class: 'AmazonWebServicesCredentialsBinding',
+            credentialsId: 'AWS_CRED'
+        ]]) {
+            sh """
+                aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
+                
+                kubectl apply -f k8s/
+                
+                kubectl set image deployment/bookmycar-backend \
+                backend=${DOCKER_IMAGE}:${DOCKER_TAG} \
+                --namespace=prod
+            """
+        }
+    }
+}
+    }
+
+    post {
+        always {
+            
+        }
+    }
+}

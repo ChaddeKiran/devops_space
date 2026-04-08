@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmycar-backend-green
+  namespace: prod
+  labels:
+    app: bookmycar-backend
+    version: green
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bookmycar-backend
+      version: green
+  template:
+    metadata:
+      labels:
+        app: bookmycar-backend
+        version: green
+    spec:
+      containers:
+      - name: backend
+        image: bookmycar-backend:latest
+        ports:
+        - containerPort: 8081
+        envFrom:
+        - configMapRef:
+            name: bookmycar-configmap
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
