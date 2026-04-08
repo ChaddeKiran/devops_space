@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'chaddekiran/bookmycar_backend'
         DOCKER_TAG = "v1.0.${env.BUILD_NUMBER}"
+        
     }
 
     stages {
@@ -17,16 +18,20 @@ pipeline {
 
         stage('Install') {
             steps {
-                sh './mvnw clean install'
+                dir('backend') {
+                    sh './mvnw clean install'
+                }
             }
         }
 
         stage('Build') {
             steps {
-                sh '''
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
-                '''
+                dir('backend') {
+                    sh '''
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    '''
+                }
             }
         }
 

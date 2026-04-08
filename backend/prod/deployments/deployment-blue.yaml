@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: bookmycar-backend:v1.0.1
+        image: chaddekiran/bookmycar_backend:v1.0.1
         ports:
         - containerPort: 8081
         envFrom:
