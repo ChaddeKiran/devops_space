@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookmycar-backend
+  namespace: prod
+spec:
+  selector:
+    app: bookmycar-backend
+    version: green  
+  ports:
+  - port: 80
+    targetPort: 8081
+    protocol: TCP
+  type: ClusterIP
