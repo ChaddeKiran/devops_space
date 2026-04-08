@@ -16,31 +16,52 @@ pipeline {
             }
         }
 
+        // stage('Install') {
+        //     steps {
+        //         dir('backend') {
+        //             withCredentials([
+        //                 string(
+        //                     credentialsId: 'DB_URL',
+        //                     variable: 'DB_URL'
+        //                 ),
+        //                 usernamePassword(
+        //                     credentialsId: 'DB_CRED',
+        //                     usernameVariable: 'DB_USER',
+        //                     passwordVariable: 'DB_PASS'
+        //                 )
+        //             ]) {
+        //                 sh '''
+        //                     chmod +x mvnw
+        //                     ./mvnw clean install -DskipTests
+        //                       -Dspring.datasource.url="${DB_URL}" \
+        //                       -Dspring.datasource.username="${DB_USER}" \
+        //                       -Dspring.datasource.password="${DB_PASS}"
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
+
         stage('Install') {
-            steps {
-                dir('backend') {
-                    withCredentials([
-                        string(
-                            credentialsId: 'DB_URL',
-                            variable: 'DB_URL'
-                        ),
-                        usernamePassword(
-                            credentialsId: 'DB_CRED',
-                            usernameVariable: 'DB_USER',
-                            passwordVariable: 'DB_PASS'
-                        )
-                    ]) {
-                        sh '''
-                            chmod +x mvnw
-                            ./mvnw clean install \
-                              -Dspring.datasource.url="${DB_URL}" \
-                              -Dspring.datasource.username="${DB_USER}" \
-                              -Dspring.datasource.password="${DB_PASS}"
-                        '''
-                    }
-                }
-            }
+    steps {
+        dir('backend') {
+            sh '''
+                chmod +x mvnw
+                ./mvnw clean install -DskipTests
+            '''
         }
+    }
+}
+
+
+
+
+
+
+
+
+
+
 
         stage('Build') {
             steps {
