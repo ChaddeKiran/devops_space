@@ -54,7 +54,7 @@ pipeline {
             sh """
                 aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
                 
-                kubectl apply -f k8s/
+                kubectl apply -f prod/deployments/deployment-blue.yaml
                 
                 kubectl set image deployment/bookmycar-backend \
                 backend=${DOCKER_IMAGE}:${DOCKER_TAG} \
