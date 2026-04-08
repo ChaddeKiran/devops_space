@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: ${BRANCH_NAME},
+                git branch: "${BRANCH_NAME}",
                     url: 'https://github.com/ChaddeKiran/BookMyCar.git',
                     credentialsId: 'GITHUB_CRED'
             }
