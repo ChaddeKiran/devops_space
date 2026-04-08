@@ -4,12 +4,13 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'chaddekiran/bookmycar_backend'
         DOCKER_TAG = "v1.0.${env.BUILD_NUMBER}"
+        BRANCH_NAME = "${params.BRANCH_NAME}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
+                git branch: ${BRANCH_NAME},
                     url: 'https://github.com/ChaddeKiran/BookMyCar.git',
                     credentialsId: 'GITHUB_CRED'
             }
