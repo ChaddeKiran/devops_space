@@ -2,13 +2,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: bookmycar-ingress
-  namespace: bookmycar
+  namespace: prod
   annotations:
+    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: nginx
   rules:
-  - host: bookmycar.example.com  # Replace with your domain
-    http:
+  - http:
       paths:
       - path: /api
         pathType: Prefix
@@ -24,3 +25,4 @@ spec:
             name: bookmycar-frontend
             port:
               number: 80
+              

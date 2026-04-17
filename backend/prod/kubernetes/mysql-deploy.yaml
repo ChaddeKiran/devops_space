@@ -1,0 +1,79 @@
+# Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+  namespace: prod
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "admin123"
+  MYSQL_USER: "db_user"
+  MYSQL_PASSWORD: "db_password"
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: prod
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+---
+# Deployment (not StatefulSet)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: chaddekiran/bookmycar_mysql:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3306
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: "bookmycar_db"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-data
+          emptyDir: {}          # ← stored on node, no PVC needed

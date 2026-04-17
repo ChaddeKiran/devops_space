@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmycar-backend
+  namespace: prod
+  labels:
+    app: bookmycar-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bookmycar-backend
+  template:
+    metadata:
+      labels:
+        app: bookmycar-backend
+    spec:
+      containers:
+        - name: backend
+          image: bookmycar_backend:v1.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: bookmycar-backend-config
+            - secretRef:
+                name: bookmycar-backend-secret

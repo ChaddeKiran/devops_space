@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookmycar-backend-config
+  namespace: prod
+data:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/bookmycar_db"
+  SERVER_PORT: "8081"
