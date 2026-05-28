@@ -15,6 +15,18 @@ spec:
       labels:
         app: bookmycar-backend
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z mysql 3306; do
+                echo "waiting for mysql:3306..."
+                sleep 3
+              done
+              echo "mysql is reachable"
       containers:
         - name: backend
           image: chaddekiran/bookmycar_backend:v1.0.1
@@ -23,21 +35,28 @@ spec:
             - containerPort: 8081
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "250m"
+              memory: "512Mi"
             limits:
-              cpu: "150m"
-              memory: "384Mi"
+              cpu: "500m"
+              memory: "768Mi"
+          startupProbe:
+            tcpSocket:
+              port: 8081
+            periodSeconds: 10
+            failureThreshold: 30
           readinessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 20
+            initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 6
           livenessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 40
-            periodSeconds: 15
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            failureThreshold: 3
           envFrom:
             - configMapRef:
                 name: bookmycar-backend-config

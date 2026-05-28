@@ -4,6 +4,6 @@ metadata:
   name: bookmycar-backend-config
   namespace: prod
 data:
-  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/bookmycar_db"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/bookmycar_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
   SERVER_PORT: "8081"
   APP_CORS_ALLOWED_ORIGINS: "*"
