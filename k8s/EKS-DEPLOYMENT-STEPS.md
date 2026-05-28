@@ -95,6 +95,22 @@ Verify app DB user (same as `backend-secret.yaml`):
 kubectl exec -n prod -i ${MYSQL_POD} -- sh -c 'mysql -u db_user -pdb_password -e "USE bookmycar_db; SHOW TABLES;"'
 ```
 
+**Confirm data was loaded** (must not be all zeros):
+
+```bash
+kubectl exec -n prod -i ${MYSQL_POD} -- sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "
+USE bookmycar_db;
+SELECT \"users\" AS tbl, COUNT(*) AS cnt FROM users
+UNION ALL SELECT \"roles\", COUNT(*) FROM roles
+UNION ALL SELECT \"cars\", COUNT(*) FROM cars
+UNION ALL SELECT \"customers\", COUNT(*) FROM customers;
+"'
+```
+
+Expected after successful `data.sql`: `users=9`, `roles=3`, `cars=6`, `customers=5`.
+
+If all counts are `0`, the schema ran but data did not load. Check file size on the server (`wc -l data.sql` should be ~100+ lines), then re-run only the data step (see section 9).
+
 ## 5) Deploy backend only after DB init
 
 ```bash
@@ -112,9 +128,13 @@ Proceed only if backend logs do not show SQL connection errors and pods are `1/1
 
 ## 6) Deploy frontend after backend is healthy
 
+Frontend must use Nginx to proxy API traffic to the backend (not `localhost:8081` in the browser).
+
 ```bash
+kubectl apply -f frontend-configmap.yaml
 kubectl apply -f frontend-deployment.yaml
 kubectl apply -f frontend-hpa.yaml
+kubectl rollout restart deployment/bookmycar-frontend -n prod
 kubectl rollout status deployment/bookmycar-frontend -n prod
 kubectl get svc -n prod bookmycar-frontend
 ```
@@ -123,6 +143,8 @@ Open `bookmycar-frontend` `EXTERNAL-IP`/LoadBalancer DNS in browser.
 
 Example:
 - `http://a1b2c3d4e5f6g7.elb.ap-south-1.amazonaws.com`
+
+Test login with sample user from `data.sql` (for example `admin` / `Admin@123`).
 
 ## 7) Optional: backend public DNS
 
@@ -196,6 +218,56 @@ kubectl apply -f frontend-hpa.yaml
 
 ## 9) Troubleshooting
 
+### Frontend cannot reach backend (`ERR_CONNECTION_REFUSED` on `localhost:8081`)
+
+**Symptom:** Browser DevTools shows requests to `http://localhost:8081/login`. Login page may show `Invalid Credentials` even when the real issue is network failure.
+
+**Verified in BookMyCar source (`BookMyCar/frontend/src`):**
+
+| File | What it does |
+|------|----------------|
+| `components/Login.js` | Calls `fetch('http://localhost:8081/login', ...)` |
+| `index.js` | Wraps `window.fetch` and rewrites `localhost:8081` → `REACT_APP_API_BASE_URL` (default **`/api`**) |
+| `backend/.../UserController.java` | Backend endpoint is **`POST /login`** (no `/api` prefix on Spring) |
+
+So the correct Kubernetes pattern is: browser → **`/api/login`** → Nginx strips `/api` → backend **`/login`**.
+
+**Cause:** Docker image `chaddekiran/bookmycar_frontend:v1.0.1` was likely built **before** the `index.js` fetch wrapper, so the browser still calls `localhost:8081` (your laptop, not EKS).
+
+**Fix (cluster):**
+
+```bash
+kubectl apply -f frontend-configmap.yaml
+kubectl apply -f frontend-deployment.yaml
+kubectl rollout restart deployment/bookmycar-frontend -n prod
+```
+
+`frontend-configmap.yaml` proxies `/api/*` → `bookmycar-backend` and rewrites `localhost:8081` in old JS bundles to `/api`.
+
+**Fix (proper, from BookMyCar repo):** Rebuild frontend from current `BookMyCar/frontend` and push a new image tag:
+
+```bash
+cd BookMyCar/frontend
+CI=false REACT_APP_API_BASE_URL=/api npm run build
+# docker build, push, update frontend-deployment.yaml image tag
+```
+
+Note: `devops_space/frontend/Jenkinsfile` uses `REACT_APP_API_URL` but the app reads **`REACT_APP_API_BASE_URL`** — fix Jenkins before CI builds.
+
+Verify backend inside cluster:
+
+```bash
+kubectl run curl-test --rm -it --restart=Never -n prod --image=curlimages/curl -- \
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://bookmycar-backend/login \
+  -H "Content-Type: application/json" -d '{"username":"admin","password":"Admin@123"}'
+```
+
+Confirm backend pods are running:
+
+```bash
+kubectl get pods -n prod -l app=bookmycar-backend
+```
+
 ### Backend pod keeps restarting (`CrashLoopBackOff` / not `1/1`)
 
 Check why the container failed:
@@ -241,3 +313,21 @@ MYSQL_POD=$(kubectl get pod -n prod -l app=mysql -o jsonpath='{.items[0].metadat
 kubectl exec -n prod -it ${MYSQL_POD} -- sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "USE bookmycar_db; SHOW TABLES;"'
 kubectl exec -n prod -it ${MYSQL_POD} -- sh -c 'mysql -u db_user -pdb_password -e "USE bookmycar_db; SELECT COUNT(*) FROM users;"'
 ```
+
+### Tables exist but row counts are 0
+
+Schema loaded; `data.sql` did not. On Ubuntu in `devops_space/k8s`:
+
+```bash
+wc -l data.sql    # must be ~100+, not 0 or 1
+head -5 data.sql  # should show INSERT statements
+```
+
+Reload data (stream from host — most reliable):
+
+```bash
+MYSQL_POD=$(kubectl get pod -n prod -l app=mysql -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -n prod -i ${MYSQL_POD} -- sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" bookmycar_db' < data.sql
+```
+
+Re-check counts (same query as section 4). Then deploy backend.

@@ -6,7 +6,7 @@ pipeline {
     S3_BUCKET          = 'bookmycar-frontend-prod'
     CLOUDFRONT_DIST_ID = 'E2QWRTHY1ABCDE'
     AWS_CREDENTIALS_ID = 'AWS_CRED'
-    REACT_APP_API_URL  = 'https://your-backend-url'
+    REACT_APP_API_BASE_URL  = '/api'
   }
 
   stages {
@@ -35,7 +35,7 @@ pipeline {
       steps {
         sh '''
           CI=false \
-          REACT_APP_API_URL=${REACT_APP_API_URL} \
+          REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL} \
           npm run build
         '''
       }
